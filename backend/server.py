@@ -89,7 +89,7 @@ class Survey(BaseModel):
 
 class SurveyCreate(BaseModel):
     patient_id: str
-    date: date
+    date: datetime
     pain_score: int = Field(ge=0, le=10)
     mobility_score: int = Field(ge=0, le=10)
     activities_of_daily_living: Dict[str, int] = {}
