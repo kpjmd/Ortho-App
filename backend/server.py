@@ -100,7 +100,7 @@ class SurveyCreate(BaseModel):
 class AIInsight(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     patient_id: str
-    date: date
+    date: datetime
     recovery_status: RecoveryStatus
     recommendations: List[str] = []
     risk_factors: List[str] = []
