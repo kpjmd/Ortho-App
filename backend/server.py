@@ -67,7 +67,7 @@ class WearableData(BaseModel):
 
 class WearableDataCreate(BaseModel):
     patient_id: str
-    date: date
+    date: datetime
     steps: int
     heart_rate: int
     oxygen_saturation: float
