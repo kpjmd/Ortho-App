@@ -203,7 +203,7 @@ class OrthopedicAPITester:
         success, response = self.run_test(
             "Get Patient Wearable Data",
             "GET",
-            f"api/patients/{self.test_patient_id}/wearable-data",
+            f"api/wearable-data/{self.test_patient_id}",
             200
         )
         return success
