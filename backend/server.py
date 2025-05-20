@@ -356,8 +356,8 @@ async def add_sample_data():
             name="Sarah Johnson",
             email="sarah.johnson@example.com",
             injury_type=InjuryType.ROTATOR_CUFF,
-            date_of_injury=date(2025, 2, 5),
-            date_of_surgery=date(2025, 2, 20)
+            date_of_injury=datetime.strptime("2025-02-05", "%Y-%m-%d"),
+            date_of_surgery=datetime.strptime("2025-02-20", "%Y-%m-%d")
         ),
         PatientCreate(
             name="Michael Brown",
