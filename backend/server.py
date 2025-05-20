@@ -77,7 +77,7 @@ class WearableDataCreate(BaseModel):
 class Survey(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     patient_id: str
-    date: date
+    date: datetime
     pain_score: int = Field(ge=0, le=10)  # 0-10 scale
     mobility_score: int = Field(ge=0, le=10)  # 0-10 scale
     activities_of_daily_living: Dict[str, int] = {}  # Various activities and their scores
