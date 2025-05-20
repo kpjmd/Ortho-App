@@ -56,7 +56,7 @@ class PatientCreate(BaseModel):
 class WearableData(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     patient_id: str
-    date: date
+    date: datetime
     steps: int
     heart_rate: int
     oxygen_saturation: float
