@@ -41,8 +41,8 @@ class Patient(BaseModel):
     name: str
     email: str
     injury_type: InjuryType
-    date_of_injury: date
-    date_of_surgery: Optional[date] = None
+    date_of_injury: datetime
+    date_of_surgery: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
