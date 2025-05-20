@@ -7,7 +7,7 @@ import "./App.css";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Dashboard Components
+// Header Component
 const Header = () => {
   return (
     <header className="bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg">
@@ -17,30 +17,11 @@ const Header = () => {
           <ul className="flex space-x-6">
             <li><Link to="/" className="text-white hover:text-blue-200">Dashboard</Link></li>
             <li><Link to="/patients" className="text-white hover:text-blue-200">Patients</Link></li>
-            <li><Link to="/surveys" className="text-white hover:text-blue-200">Surveys</Link></li>
+            <li><Link to="/surveys/new" className="text-white hover:text-blue-200">New Survey</Link></li>
           </ul>
         </nav>
       </div>
     </header>
-  );
-};
-
-const Footer = () => {
-  return (
-    <footer className="bg-gray-800 text-gray-300 py-6">
-      <div className="container mx-auto px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-4 md:mb-0">
-            <p className="text-sm">&copy; 2025 OrthoTrack. All rights reserved.</p>
-          </div>
-          <div className="flex space-x-4">
-            <a href="#" className="text-gray-300 hover:text-white">Privacy Policy</a>
-            <a href="#" className="text-gray-300 hover:text-white">Terms of Service</a>
-            <a href="#" className="text-gray-300 hover:text-white">Contact</a>
-          </div>
-        </div>
-      </div>
-    </footer>
   );
 };
 
@@ -53,19 +34,16 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [patients, insights] = await Promise.all([
-          axios.get(`${API}/patients`),
-          axios.get(`${API}/patients`)
-        ]);
+        const patients = await axios.get(`${API}/patients`);
         
-        // Count patients by status (simplified)
+        // Simple stats calculation
         let atRiskCount = 0;
         if (patients.data.length > 0) {
-          // Just for demo purposes, we'll flag a third of patients as at risk
           atRiskCount = Math.floor(patients.data.length / 3);
         }
         
@@ -87,7 +65,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex-1 container mx-auto px-6 py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Recovery Insights Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Orthopedic Recovery Tracker</h1>
       
       {loading ? (
         <div className="flex justify-center">
@@ -119,24 +97,6 @@ const Dashboard = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-700 mb-4">Recent Activity</h2>
-              <div className="space-y-4">
-                <div className="border-l-4 border-blue-500 pl-4 py-2">
-                  <p className="text-gray-600">New patient added: John Smith</p>
-                  <p className="text-sm text-gray-500">ACL Injury • 2 hours ago</p>
-                </div>
-                <div className="border-l-4 border-green-500 pl-4 py-2">
-                  <p className="text-gray-600">Survey completed: Sarah Johnson</p>
-                  <p className="text-sm text-gray-500">Rotator Cuff • 3 hours ago</p>
-                </div>
-                <div className="border-l-4 border-yellow-500 pl-4 py-2">
-                  <p className="text-gray-600">Wearable data synced: Michael Brown</p>
-                  <p className="text-sm text-gray-500">ACL Injury • 5 hours ago</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-700 mb-4">Quick Actions</h2>
               <div className="grid grid-cols-2 gap-4">
                 <Link to="/patients/new" className="bg-blue-600 text-white py-3 px-4 rounded-lg text-center hover:bg-blue-700 transition">
@@ -145,29 +105,26 @@ const Dashboard = () => {
                 <Link to="/surveys/new" className="bg-green-600 text-white py-3 px-4 rounded-lg text-center hover:bg-green-700 transition">
                   Record Survey
                 </Link>
-                <Link to="/wearable/sync" className="bg-purple-600 text-white py-3 px-4 rounded-lg text-center hover:bg-purple-700 transition">
-                  Sync Wearables
+                <Link to="/wearable/new" className="bg-purple-600 text-white py-3 px-4 rounded-lg text-center hover:bg-purple-700 transition">
+                  Enter Wearable Data
                 </Link>
-                <Link to="/insights" className="bg-amber-600 text-white py-3 px-4 rounded-lg text-center hover:bg-amber-700 transition">
-                  View Insights
+                <Link to="/patients" className="bg-amber-600 text-white py-3 px-4 rounded-lg text-center hover:bg-amber-700 transition">
+                  View Patients
                 </Link>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Recovery Progress Overview</h2>
-            <div className="p-4 bg-gray-100 rounded-lg mb-4 flex items-center">
-              <div className="text-gray-600">
-                This is a placeholder for data visualizations showing recovery trends across patients.
-                In a production app, this would display charts for range of motion, pain levels, and 
-                activity metrics over time.
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
-                View Detailed Analytics
-              </button>
+            
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">About This App</h2>
+              <p className="text-gray-600 mb-4">
+                This application tracks orthopedic recovery progress through surveys and wearable data, 
+                with a focus on ACL and rotator cuff injuries. It provides AI-driven insights to help
+                monitor patient recovery and identify potential issues early.
+              </p>
+              <p className="text-gray-600">
+                To get started, add sample patients or create your own, then record survey data and 
+                wearable metrics to generate recovery insights.
+              </p>
             </div>
           </div>
         </>
@@ -469,16 +426,6 @@ const PatientDetail = () => {
                 >
                   Wearable Data
                 </button>
-                <button
-                  onClick={() => setActiveTab('insights')}
-                  className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                    activeTab === 'insights'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Insights
-                </button>
               </nav>
             </div>
           </div>
@@ -755,80 +702,980 @@ const PatientDetail = () => {
               )}
             </div>
           )}
-
-          {activeTab === 'insights' && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-700">Recovery Insights</h2>
-                <button 
-                  onClick={async () => {
-                    try {
-                      await axios.post(`${API}/generate-insights/${patient.id}`);
-                      const insightsRes = await axios.get(`${API}/insights/${patient.id}`);
-                      setInsights(insightsRes.data);
-                    } catch (err) {
-                      console.error("Failed to generate insights", err);
-                    }
-                  }}
-                  className="bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition"
-                >
-                  Generate New Insights
-                </button>
-              </div>
-              
-              {insights.length === 0 ? (
-                <p className="text-gray-500">No insights available yet</p>
-              ) : (
-                <div className="space-y-6">
-                  {insights.map((insight) => (
-                    <div key={insight.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            insight.recovery_status === 'On Track' ? 'bg-green-100 text-green-800' : 
-                            insight.recovery_status === 'At Risk' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {insight.recovery_status}
-                          </div>
-                          <span className="ml-3 text-sm text-gray-500">
-                            {new Date(insight.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium text-blue-600">
-                          {insight.progress_percentage.toFixed(1)}% recovered
-                        </div>
-                      </div>
-                      
-                      {insight.risk_factors.length > 0 && (
-                        <div className="mb-3">
-                          <h3 className="text-sm font-medium text-gray-700 mb-2">Risk Factors:</h3>
-                          <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-                            {insight.risk_factors.map((factor, index) => (
-                              <li key={index}>{factor}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {insight.recommendations.length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-700 mb-2">Recommendations:</h3>
-                          <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-                            {insight.recommendations.map((rec, index) => (
-                              <li key={index}>{rec}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>
   );
 };
+
+// PatientForm Component
+const PatientForm = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    injury_type: 'ACL',
+    date_of_injury: '',
+    date_of_surgery: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await axios.post(`${API}/patients`, formData);
+      navigate('/patients');
+    } catch (err) {
+      console.error("Failed to create patient", err);
+      setError(err.response?.data?.detail || "Failed to create patient");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 container mx-auto px-6 py-8">
+      <div className="mb-6 flex items-center">
+        <button 
+          onClick={() => navigate('/patients')}
+          className="mr-4 text-gray-600 hover:text-gray-900"
+        >
+          ← Back to Patients
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">Add New Patient</h1>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-md p-6">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
+              Full Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="injury_type" className="block text-gray-700 text-sm font-bold mb-2">
+              Injury Type
+            </label>
+            <select
+              id="injury_type"
+              name="injury_type"
+              value={formData.injury_type}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            >
+              <option value="ACL">ACL</option>
+              <option value="Rotator Cuff">Rotator Cuff</option>
+            </select>
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="date_of_injury" className="block text-gray-700 text-sm font-bold mb-2">
+              Date of Injury
+            </label>
+            <input
+              type="date"
+              id="date_of_injury"
+              name="date_of_injury"
+              value={formData.date_of_injury}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="date_of_surgery" className="block text-gray-700 text-sm font-bold mb-2">
+              Date of Surgery (if applicable)
+            </label>
+            <input
+              type="date"
+              id="date_of_surgery"
+              name="date_of_surgery"
+              value={formData.date_of_surgery}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            />
+          </div>
+          
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => navigate('/patients')}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-4"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              {loading ? 'Saving...' : 'Save Patient'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Survey Form Component
+const SurveyForm = () => {
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  
+  // Get query parameters
+  const queryParams = new URLSearchParams(window.location.search);
+  const preselectedPatientId = queryParams.get('patientId');
+  
+  const [formData, setFormData] = useState({
+    patient_id: preselectedPatientId || '',
+    date: new Date().toISOString().split('T')[0],
+    pain_score: 5,
+    mobility_score: 5,
+    activities_of_daily_living: {},
+    range_of_motion: {},
+    strength: {},
+    notes: ''
+  });
+  
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const response = await axios.get(`${API}/patients`);
+        setPatients(response.data);
+        
+        if (preselectedPatientId) {
+          const patient = response.data.find(p => p.id === preselectedPatientId);
+          if (patient) {
+            setSelectedPatient(patient);
+            
+            // Initialize specific fields based on injury type
+            if (patient.injury_type === 'ACL') {
+              setFormData(prev => ({
+                ...prev,
+                range_of_motion: {
+                  knee_flexion: 90,
+                  knee_extension: -5
+                },
+                strength: {
+                  quadriceps: 3,
+                  hamstrings: 3
+                },
+                activities_of_daily_living: {
+                  walking: 3,
+                  stairs: 2,
+                  standing_from_chair: 3
+                }
+              }));
+            } else if (patient.injury_type === 'Rotator Cuff') {
+              setFormData(prev => ({
+                ...prev,
+                range_of_motion: {
+                  shoulder_flexion: 100,
+                  shoulder_abduction: 90,
+                  external_rotation: 30
+                },
+                strength: {
+                  deltoid: 3,
+                  rotator_cuff: 2
+                },
+                activities_of_daily_living: {
+                  reaching_overhead: 2,
+                  carrying_objects: 3,
+                  dressing: 4
+                }
+              }));
+            }
+          }
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch patients", err);
+        setError("Failed to load patients");
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, [preselectedPatientId]);
+
+  const handlePatientChange = (e) => {
+    const patientId = e.target.value;
+    setFormData(prev => ({ ...prev, patient_id: patientId }));
+    
+    const patient = patients.find(p => p.id === patientId);
+    setSelectedPatient(patient);
+    
+    // Reset and reinitialize form fields based on patient injury type
+    if (patient) {
+      if (patient.injury_type === 'ACL') {
+        setFormData(prev => ({
+          ...prev,
+          patient_id: patientId,
+          range_of_motion: {
+            knee_flexion: 90,
+            knee_extension: -5
+          },
+          strength: {
+            quadriceps: 3,
+            hamstrings: 3
+          },
+          activities_of_daily_living: {
+            walking: 3,
+            stairs: 2,
+            standing_from_chair: 3
+          }
+        }));
+      } else if (patient.injury_type === 'Rotator Cuff') {
+        setFormData(prev => ({
+          ...prev,
+          patient_id: patientId,
+          range_of_motion: {
+            shoulder_flexion: 100,
+            shoulder_abduction: 90,
+            external_rotation: 30
+          },
+          strength: {
+            deltoid: 3,
+            rotator_cuff: 2
+          },
+          activities_of_daily_living: {
+            reaching_overhead: 2,
+            carrying_objects: 3,
+            dressing: 4
+          }
+        }));
+      }
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleRangeOfMotionChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      range_of_motion: {
+        ...prev.range_of_motion,
+        [field]: parseFloat(value)
+      }
+    }));
+  };
+
+  const handleStrengthChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      strength: {
+        ...prev.strength,
+        [field]: parseInt(value)
+      }
+    }));
+  };
+
+  const handleADLChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      activities_of_daily_living: {
+        ...prev.activities_of_daily_living,
+        [field]: parseInt(value)
+      }
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.patient_id) {
+      setError("Please select a patient");
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      await axios.post(`${API}/surveys`, formData);
+      navigate(`/patients/${formData.patient_id}`);
+    } catch (err) {
+      console.error("Failed to submit survey", err);
+      setError(err.response?.data?.detail || "Failed to submit survey");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 container mx-auto px-6 py-8">
+      <div className="mb-6 flex items-center">
+        <button 
+          onClick={() => navigate(-1)}
+          className="mr-4 text-gray-600 hover:text-gray-900"
+        >
+          ← Back
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">New Patient Survey</h1>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-md p-6">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        {loading ? (
+          <div className="flex justify-center my-8">
+            <div className="loader"></div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <label htmlFor="patient_id" className="block text-gray-700 text-sm font-bold mb-2">
+                Patient
+              </label>
+              {preselectedPatientId ? (
+                <div className="py-2 px-3 bg-gray-100 rounded">
+                  {selectedPatient ? selectedPatient.name : 'Loading patient...'}
+                </div>
+              ) : (
+                <select
+                  id="patient_id"
+                  name="patient_id"
+                  value={formData.patient_id}
+                  onChange={handlePatientChange}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                >
+                  <option value="">Select a patient</option>
+                  {patients.map(patient => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.name} - {patient.injury_type}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
+                Survey Date
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="pain_score" className="block text-gray-700 text-sm font-bold mb-2">
+                  Pain Score (0-10)
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="range"
+                    id="pain_score"
+                    name="pain_score"
+                    min="0"
+                    max="10"
+                    value={formData.pain_score}
+                    onChange={handleChange}
+                    className="w-full mr-4"
+                    required
+                  />
+                  <span className="text-lg font-bold">{formData.pain_score}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>No Pain</span>
+                  <span>Worst Possible</span>
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="mobility_score" className="block text-gray-700 text-sm font-bold mb-2">
+                  Mobility Score (0-10)
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="range"
+                    id="mobility_score"
+                    name="mobility_score"
+                    min="0"
+                    max="10"
+                    value={formData.mobility_score}
+                    onChange={handleChange}
+                    className="w-full mr-4"
+                    required
+                  />
+                  <span className="text-lg font-bold">{formData.mobility_score}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>No Mobility</span>
+                  <span>Full Mobility</span>
+                </div>
+              </div>
+            </div>
+            
+            {selectedPatient && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-700 mb-4">Range of Motion</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {selectedPatient.injury_type === 'ACL' ? (
+                      <>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Knee Flexion (degrees)
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.range_of_motion.knee_flexion || ''}
+                            onChange={(e) => handleRangeOfMotionChange('knee_flexion', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Knee Extension (degrees)
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.range_of_motion.knee_extension || ''}
+                            onChange={(e) => handleRangeOfMotionChange('knee_extension', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Shoulder Flexion (degrees)
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.range_of_motion.shoulder_flexion || ''}
+                            onChange={(e) => handleRangeOfMotionChange('shoulder_flexion', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Shoulder Abduction (degrees)
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.range_of_motion.shoulder_abduction || ''}
+                            onChange={(e) => handleRangeOfMotionChange('shoulder_abduction', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            External Rotation (degrees)
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.range_of_motion.external_rotation || ''}
+                            onChange={(e) => handleRangeOfMotionChange('external_rotation', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-700 mb-4">Activities of Daily Living</h2>
+                  <p className="text-sm text-gray-600 mb-4">Rate the patient's ability to perform these activities (0-7)</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {selectedPatient.injury_type === 'ACL' ? (
+                      <>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Walking
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.walking || ''}
+                            onChange={(e) => handleADLChange('walking', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Stairs
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.stairs || ''}
+                            onChange={(e) => handleADLChange('stairs', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Standing from Chair
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.standing_from_chair || ''}
+                            onChange={(e) => handleADLChange('standing_from_chair', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Reaching Overhead
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.reaching_overhead || ''}
+                            onChange={(e) => handleADLChange('reaching_overhead', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Carrying Objects
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.carrying_objects || ''}
+                            onChange={(e) => handleADLChange('carrying_objects', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                            Dressing
+                          </label>
+                          <select
+                            value={formData.activities_of_daily_living.dressing || ''}
+                            onChange={(e) => handleADLChange('dressing', e.target.value)}
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                              <option key={value} value={value}>
+                                {value} - {value === 0 ? 'Unable' : value === 7 ? 'Normal' : `Level ${value}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            <div className="mb-6">
+              <label htmlFor="notes" className="block text-gray-700 text-sm font-bold mb-2">
+                Additional Notes
+              </label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                rows="4"
+              ></textarea>
+            </div>
+            
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-4"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !formData.patient_id}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              >
+                {submitting ? 'Submitting...' : 'Submit Survey'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Wearable Data Form Component
+const WearableDataForm = () => {
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  
+  // Get query parameters
+  const queryParams = new URLSearchParams(window.location.search);
+  const preselectedPatientId = queryParams.get('patientId');
+  
+  const [formData, setFormData] = useState({
+    patient_id: preselectedPatientId || '',
+    date: new Date().toISOString().split('T')[0],
+    steps: 5000,
+    heart_rate: 75,
+    oxygen_saturation: 98,
+    sleep_hours: 7.5,
+    walking_speed: 3.0
+  });
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const response = await axios.get(`${API}/patients`);
+        setPatients(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch patients", err);
+        setError("Failed to load patients");
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNumberChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: parseFloat(value) }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.patient_id) {
+      setError("Please select a patient");
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      await axios.post(`${API}/wearable-data`, formData);
+      navigate(`/patients/${formData.patient_id}`);
+    } catch (err) {
+      console.error("Failed to submit wearable data", err);
+      setError(err.response?.data?.detail || "Failed to submit wearable data");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 container mx-auto px-6 py-8">
+      <div className="mb-6 flex items-center">
+        <button 
+          onClick={() => navigate(-1)}
+          className="mr-4 text-gray-600 hover:text-gray-900"
+        >
+          ← Back
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">Add Wearable Data</h1>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-md p-6">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        {loading ? (
+          <div className="flex justify-center my-8">
+            <div className="loader"></div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <label htmlFor="patient_id" className="block text-gray-700 text-sm font-bold mb-2">
+                Patient
+              </label>
+              {preselectedPatientId ? (
+                <div className="py-2 px-3 bg-gray-100 rounded">
+                  {patients.find(p => p.id === preselectedPatientId)?.name || 'Loading patient...'}
+                </div>
+              ) : (
+                <select
+                  id="patient_id"
+                  name="patient_id"
+                  value={formData.patient_id}
+                  onChange={handleChange}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                >
+                  <option value="">Select a patient</option>
+                  {patients.map(patient => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.name} - {patient.injury_type}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
+                Data Date
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="steps" className="block text-gray-700 text-sm font-bold mb-2">
+                  Steps
+                </label>
+                <input
+                  type="number"
+                  id="steps"
+                  name="steps"
+                  value={formData.steps}
+                  onChange={handleNumberChange}
+                  min="0"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="heart_rate" className="block text-gray-700 text-sm font-bold mb-2">
+                  Heart Rate (bpm)
+                </label>
+                <input
+                  type="number"
+                  id="heart_rate"
+                  name="heart_rate"
+                  value={formData.heart_rate}
+                  onChange={handleNumberChange}
+                  min="40"
+                  max="200"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="oxygen_saturation" className="block text-gray-700 text-sm font-bold mb-2">
+                  Oxygen Saturation (%)
+                </label>
+                <input
+                  type="number"
+                  id="oxygen_saturation"
+                  name="oxygen_saturation"
+                  value={formData.oxygen_saturation}
+                  onChange={handleNumberChange}
+                  min="80"
+                  max="100"
+                  step="0.1"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="sleep_hours" className="block text-gray-700 text-sm font-bold mb-2">
+                  Sleep Hours
+                </label>
+                <input
+                  type="number"
+                  id="sleep_hours"
+                  name="sleep_hours"
+                  value={formData.sleep_hours}
+                  onChange={handleNumberChange}
+                  min="0"
+                  max="24"
+                  step="0.1"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="walking_speed" className="block text-gray-700 text-sm font-bold mb-2">
+                Walking Speed (km/h)
+              </label>
+              <input
+                type="number"
+                id="walking_speed"
+                name="walking_speed"
+                value={formData.walking_speed}
+                onChange={handleNumberChange}
+                min="0"
+                step="0.1"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              />
+            </div>
+            
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-4"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !formData.patient_id}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              >
+                {submitting ? 'Submitting...' : 'Submit Data'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Footer Component
+const Footer = () => {
+  return (
+    <footer className="bg-gray-800 text-gray-300 py-6">
+      <div className="container mx-auto px-6">
+        <div className="flex flex-col md:flex-row justify-between items-center">
+          <div className="mb-4 md:mb-0">
+            <p className="text-sm">&copy; 2025 OrthoTrack. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+// Main App
+function App() {
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <BrowserRouter>
+        <Header />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/patients" element={<PatientList />} />
+          <Route path="/patients/:patientId" element={<PatientDetail />} />
+          <Route path="/patients/new" element={<PatientForm />} />
+          <Route path="/surveys/new" element={<SurveyForm />} />
+          <Route path="/wearable/new" element={<WearableDataForm />} />
+        </Routes>
+        <Footer />
+      </BrowserRouter>
+    </div>
+  );
+}
+
+export default App;
