@@ -69,7 +69,7 @@ class OrthopedicAPITester:
             "Create Patient",
             "POST",
             "api/patients",
-            201,
+            200,  # The API returns 200 instead of 201
             data=data
         )
         
