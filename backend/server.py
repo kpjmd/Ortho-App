@@ -423,7 +423,7 @@ async def add_sample_data():
         
         # Add survey data
         for days_ago in range(10, 0, -1):
-            sample_date = date(today.year, today.month, max(today.day - days_ago, 1))
+            sample_date = datetime.now() - timedelta(days=days_ago)
             
             # Pain decreases over time
             base_pain = max(8 - (10 - days_ago) * 0.5, 2)
