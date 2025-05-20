@@ -60,7 +60,9 @@ class OrthopedicAPITester:
             "email": f"test{test_id}@example.com",
             "injury_type": "ACL",
             "date_of_injury": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),
-            "date_of_surgery": (datetime.now() - timedelta(days=20)).strftime("%Y-%m-%d")
+            "date_of_surgery": (datetime.now() - timedelta(days=20)).strftime("%Y-%m-%d"),
+            "age": 35,
+            "gender": "Male"
         }
         
         success, response = self.run_test(
