@@ -386,7 +386,7 @@ async def add_sample_data():
         # Generate data for last 10 days
         today = datetime.now().date()
         for days_ago in range(10, 0, -1):
-            sample_date = date(today.year, today.month, max(today.day - days_ago, 1))
+            sample_date = datetime.now() - timedelta(days=days_ago)
             
             # Different data patterns based on recovery progress
             base_steps = 2000 + (10 - days_ago) * 300  # Steps increase over time
