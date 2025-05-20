@@ -154,7 +154,7 @@ class OrthopedicAPITester:
         success, response = self.run_test(
             "Get Patient Surveys",
             "GET",
-            f"api/patients/{self.test_patient_id}/surveys",
+            f"api/surveys/{self.test_patient_id}",
             200
         )
         return success
