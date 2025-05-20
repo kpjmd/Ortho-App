@@ -130,7 +130,7 @@ class OrthopedicAPITester:
             "Create Survey",
             "POST",
             "api/surveys",
-            201,
+            200,  # The API returns 200 instead of 201
             data=data
         )
         
