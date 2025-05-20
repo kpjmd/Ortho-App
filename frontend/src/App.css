@@ -1,38 +1,139 @@
 .App {
-    text-align: center;
+  width: 100%;
+  min-height: 100vh;
 }
 
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Loading Spinner */
+.loader {
+  border: 5px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 5px solid #3498db;
+  width: 40px;
+  height: 40px;
+  animation: spin 2s linear infinite;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Form field styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;  
+  background: #d3d3d3;
+  outline: none;
 }
 
-.App-link {
-    color: #61dafb;
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%; 
+  background: #3b82f6;
+  cursor: pointer;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+}
+
+/* Responsive table fixes */
+@media (max-width: 640px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Chart container styles */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+/* Progress indicators */
+.progress-indicator {
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.5s ease-in-out;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-on-track {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-at-risk {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-needs-attention {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Custom tabs */
+.tab-active {
+  color: #3b82f6;
+  border-bottom: 2px solid #3b82f6;
+  font-weight: 600;
+}
+
+.tab-inactive {
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-inactive:hover {
+  color: #4b5563;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* Data card hover effects */
+.data-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.data-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Button transitions */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Consistent heading styles */
+h1, h2, h3, h4, h5, h6 {
+  color: #1f2937;
+}
+
+/* Focus styles */
+*:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
