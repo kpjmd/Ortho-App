@@ -1667,8 +1667,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/patients" element={<PatientList />} />
-          <Route path="/patients/:patientId" element={<PatientDetail />} />
           <Route path="/patients/new" element={<PatientForm />} />
+          <Route path="/patients/:patientId" element={<PatientDetail />} />
           <Route path="/surveys/new" element={<SurveyForm />} />
           <Route path="/wearable/new" element={<WearableDataForm />} />
         </Routes>
