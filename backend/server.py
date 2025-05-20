@@ -50,8 +50,8 @@ class PatientCreate(BaseModel):
     name: str
     email: str
     injury_type: InjuryType
-    date_of_injury: date
-    date_of_surgery: Optional[date] = None
+    date_of_injury: datetime
+    date_of_surgery: Optional[datetime] = None
 
 class WearableData(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
