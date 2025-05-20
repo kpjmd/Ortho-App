@@ -222,7 +222,7 @@ class OrthopedicAPITester:
         success, response = self.run_test(
             "Get Patient Insights",
             "GET",
-            f"api/patients/{self.test_patient_id}/insights",
+            f"api/insights/{self.test_patient_id}",
             200
         )
         return success
