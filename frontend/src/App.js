@@ -2,6 +2,19 @@ import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./App.css";
+import ScoreTrendsChart from "./components/ScoreTrendsChart";
+import ScoreSummaryCard from "./components/ScoreSummaryCard";
+import RecoveryTrajectoryChart from "./components/RecoveryTrajectoryChart";
+import InsightCard from "./components/InsightCard";
+import RiskIndicator from "./components/RiskIndicator";
+import WearableDataOverview from "./components/wearable/WearableDataOverview";
+import { 
+  getKOOSColors, 
+  getASESColors, 
+  getKOOSDisplayNames, 
+  getASESDisplayNames, 
+  needsProAssessment 
+} from "./utils/proScoreHelpers";
 
 // API Configuration
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -250,9 +263,11 @@ const PatientList = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      patient.injury_type === 'ACL' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      patient.diagnosis_type && patient.diagnosis_type.includes('Knee') || 
+                      ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) 
+                      ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                     }`}>
-                      {patient.injury_type}
+                      {patient.diagnosis_type || patient.injury_type}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -296,6 +311,9 @@ const PatientDetail = () => {
   const [surveys, setSurveys] = useState([]);
   const [wearableData, setWearableData] = useState([]);
   const [insights, setInsights] = useState([]);
+  const [proScores, setProScores] = useState([]);
+  const [latestProScore, setLatestProScore] = useState(null);
+  const [previousProScore, setPreviousProScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -304,18 +322,39 @@ const PatientDetail = () => {
   useEffect(() => {
     const fetchPatientData = async () => {
       try {
-        // Fetch patient details and their associated data
-        const [patientRes, surveysRes, wearableRes, insightsRes] = await Promise.all([
-          axios.get(`${API}/patients/${patientId}`),
+        // Fetch patient details first to determine knee vs shoulder
+        const patientRes = await axios.get(`${API}/patients/${patientId}`);
+        const patientData = patientRes.data;
+        
+        // Determine patient type
+        const isKneePatient = patientData.diagnosis_type && 
+          ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patientData.diagnosis_type) ||
+          patientData.injury_type === 'ACL';
+        
+        // Fetch PRO scores based on patient type
+        const proScoreEndpoint = isKneePatient ? 
+          `${API}/koos/${patientId}` : 
+          `${API}/ases/${patientId}`;
+        
+        // Fetch all data in parallel
+        const [surveysRes, wearableRes, insightsRes, proScoresRes] = await Promise.all([
           axios.get(`${API}/surveys/${patientId}`),
           axios.get(`${API}/wearable-data/${patientId}`),
-          axios.get(`${API}/insights/${patientId}`)
+          axios.get(`${API}/insights/${patientId}`),
+          axios.get(proScoreEndpoint).catch(() => ({ data: [] })) // Don't fail if no PRO data
         ]);
         
-        setPatient(patientRes.data);
+        setPatient(patientData);
         setSurveys(surveysRes.data);
         setWearableData(wearableRes.data);
         setInsights(insightsRes.data);
+        setProScores(proScoresRes.data);
+        
+        // Set latest and previous PRO scores
+        const sortedScores = proScoresRes.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setLatestProScore(sortedScores[0] || null);
+        setPreviousProScore(sortedScores[1] || null);
+        
         setLoading(false);
       } catch (err) {
         console.error("Failed to fetch patient data", err);
@@ -360,6 +399,12 @@ const PatientDetail = () => {
               <h1 className="text-3xl font-bold text-gray-800">{patient.name}</h1>
               <div className="flex space-x-4">
                 <button 
+                  onClick={() => navigate(`/pro-assessment/${patient.id}`)}
+                  className="bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition"
+                >
+                  PRO Assessment
+                </button>
+                <button 
                   onClick={() => navigate(`/surveys/new?patientId=${patient.id}`)}
                   className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition"
                 >
@@ -375,9 +420,11 @@ const PatientDetail = () => {
             </div>
             <div className="flex flex-wrap mt-2">
               <span className={`mr-4 px-3 py-1 rounded-full text-sm font-medium ${
-                patient.injury_type === 'ACL' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                patient.diagnosis_type && patient.diagnosis_type.includes('Knee') || 
+                ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) 
+                ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
               }`}>
-                {patient.injury_type}
+                {patient.diagnosis_type || patient.injury_type}
               </span>
               <span className="mr-4 text-gray-600">
                 <strong>Injury Date:</strong> {new Date(patient.date_of_injury).toLocaleDateString()}
@@ -426,12 +473,131 @@ const PatientDetail = () => {
                 >
                   Wearable Data
                 </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                    activeTab === 'analytics'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Analytics
+                </button>
               </nav>
             </div>
           </div>
 
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <>
+              {/* PRO Score Summary Section */}
+              {latestProScore && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-gray-700">PRO Scores</h2>
+                    {needsProAssessment(latestProScore?.date) && (
+                      <button 
+                        onClick={() => navigate(`/pro-assessment/${patient.id}`)}
+                        className="bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition text-sm"
+                      >
+                        Complete Assessment
+                      </button>
+                    )}
+                  </div>
+                  
+                  {(() => {
+                    const isKneePatient = patient.diagnosis_type && 
+                      ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) ||
+                      patient.injury_type === 'ACL';
+                    
+                    const colors = isKneePatient ? getKOOSColors() : getASESColors();
+                    const displayNames = isKneePatient ? getKOOSDisplayNames() : getASESDisplayNames();
+                    
+                    if (isKneePatient) {
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                          <ScoreSummaryCard
+                            title={displayNames.symptoms_score}
+                            currentScore={latestProScore?.symptoms_score}
+                            previousScore={previousProScore?.symptoms_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.symptoms_score}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.pain_score}
+                            currentScore={latestProScore?.pain_score}
+                            previousScore={previousProScore?.pain_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.pain_score}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.adl_score}
+                            currentScore={latestProScore?.adl_score}
+                            previousScore={previousProScore?.adl_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.adl_score}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.sport_score}
+                            currentScore={latestProScore?.sport_score}
+                            previousScore={previousProScore?.sport_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.sport_score}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.qol_score}
+                            currentScore={latestProScore?.qol_score}
+                            previousScore={previousProScore?.qol_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.qol_score}
+                          />
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                          <ScoreSummaryCard
+                            title={displayNames.total_score}
+                            currentScore={latestProScore?.total_score}
+                            previousScore={previousProScore?.total_score}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.total_score}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.pain_component}
+                            currentScore={latestProScore?.pain_component}
+                            previousScore={previousProScore?.pain_component}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.pain_component}
+                          />
+                          <ScoreSummaryCard
+                            title={displayNames.function_component}
+                            currentScore={latestProScore?.function_component}
+                            previousScore={previousProScore?.function_component}
+                            lastAssessmentDate={latestProScore?.date}
+                            color={colors.function_component}
+                          />
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
+              
+              {/* Score Trends Chart */}
+              {patient && (
+                <div className="mb-8">
+                  <ScoreTrendsChart 
+                    patientId={patient.id}
+                    patientType={
+                      patient.diagnosis_type && 
+                      ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) ||
+                      patient.injury_type === 'ACL' ? 'knee' : 'shoulder'
+                    }
+                  />
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-700 mb-4">Recovery Status</h2>
                 {latestInsight ? (
@@ -555,6 +721,26 @@ const PatientDetail = () => {
                 )}
               </div>
             </div>
+
+            {/* Enhanced AI Insights Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">AI-Powered Recovery Insights</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="lg:col-span-1">
+                  <InsightCard patientId={patient.id} />
+                </div>
+                <div className="lg:col-span-1">
+                  <RiskIndicator patientId={patient.id} />
+                </div>
+              </div>
+            </div>
+
+            {/* Recovery Trajectory Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">Recovery Trajectory Analysis</h2>
+              <RecoveryTrajectoryChart patientId={patient.id} />
+            </div>
+            </>
           )}
 
           {activeTab === 'surveys' && (
@@ -702,6 +888,9 @@ const PatientDetail = () => {
               )}
             </div>
           )}
+          {activeTab === 'analytics' && (
+            <WearableDataOverview patientId={patientId} patient={patient} />
+          )}
         </>
       )}
     </div>
@@ -713,10 +902,11 @@ const PatientForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    injury_type: 'ACL',
+    diagnosis_type: 'ACL Tear',
     date_of_injury: '',
     date_of_surgery: ''
   });
+  const [selectedBodyPart, setSelectedBodyPart] = useState('knee');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -724,6 +914,33 @@ const PatientForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleBodyPartChange = (bodyPart) => {
+    setSelectedBodyPart(bodyPart);
+    // Set default diagnosis for selected body part
+    const defaultDiagnosis = bodyPart === 'knee' ? 'ACL Tear' : 'Rotator Cuff Tear';
+    setFormData(prev => ({ ...prev, diagnosis_type: defaultDiagnosis }));
+  };
+
+  const getAvailableDiagnoses = () => {
+    if (selectedBodyPart === 'knee') {
+      return [
+        'ACL Tear',
+        'Meniscus Tear',
+        'Cartilage Defect',
+        'Knee Osteoarthritis',
+        'Post Total Knee Replacement'
+      ];
+    } else {
+      return [
+        'Rotator Cuff Tear',
+        'Labral Tear',
+        'Shoulder Instability',
+        'Shoulder Osteoarthritis',
+        'Post Total Shoulder Replacement'
+      ];
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -790,19 +1007,48 @@ const PatientForm = () => {
           </div>
           
           <div className="mb-4">
-            <label htmlFor="injury_type" className="block text-gray-700 text-sm font-bold mb-2">
-              Injury Type
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Body Part
+            </label>
+            <div className="flex space-x-4 mb-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="knee"
+                  checked={selectedBodyPart === 'knee'}
+                  onChange={(e) => handleBodyPartChange(e.target.value)}
+                  className="mr-2"
+                />
+                Knee
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="shoulder"
+                  checked={selectedBodyPart === 'shoulder'}
+                  onChange={(e) => handleBodyPartChange(e.target.value)}
+                  className="mr-2"
+                />
+                Shoulder
+              </label>
+            </div>
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="diagnosis_type" className="block text-gray-700 text-sm font-bold mb-2">
+              Diagnosis
             </label>
             <select
-              id="injury_type"
-              name="injury_type"
-              value={formData.injury_type}
+              id="diagnosis_type"
+              name="diagnosis_type"
+              value={formData.diagnosis_type}
               onChange={handleChange}
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               required
             >
-              <option value="ACL">ACL</option>
-              <option value="Rotator Cuff">Rotator Cuff</option>
+              {getAvailableDiagnoses().map(diagnosis => (
+                <option key={diagnosis} value={diagnosis}>{diagnosis}</option>
+              ))}
             </select>
           </div>
           
@@ -893,8 +1139,12 @@ const SurveyForm = () => {
           if (patient) {
             setSelectedPatient(patient);
             
-            // Initialize specific fields based on injury type
-            if (patient.injury_type === 'ACL') {
+            // Initialize specific fields based on diagnosis type
+            const isKneePatient = patient.diagnosis_type && 
+              ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) ||
+              patient.injury_type === 'ACL';
+            
+            if (isKneePatient) {
               setFormData(prev => ({
                 ...prev,
                 range_of_motion: {
@@ -911,7 +1161,7 @@ const SurveyForm = () => {
                   standing_from_chair: 3
                 }
               }));
-            } else if (patient.injury_type === 'Rotator Cuff') {
+            } else {
               setFormData(prev => ({
                 ...prev,
                 range_of_motion: {
@@ -951,9 +1201,13 @@ const SurveyForm = () => {
     const patient = patients.find(p => p.id === patientId);
     setSelectedPatient(patient);
     
-    // Reset and reinitialize form fields based on patient injury type
+    // Reset and reinitialize form fields based on patient diagnosis type
     if (patient) {
-      if (patient.injury_type === 'ACL') {
+      const isKneePatient = patient.diagnosis_type && 
+        ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) ||
+        patient.injury_type === 'ACL';
+      
+      if (isKneePatient) {
         setFormData(prev => ({
           ...prev,
           patient_id: patientId,
@@ -971,7 +1225,7 @@ const SurveyForm = () => {
             standing_from_chair: 3
           }
         }));
-      } else if (patient.injury_type === 'Rotator Cuff') {
+      } else {
         setFormData(prev => ({
           ...prev,
           patient_id: patientId,
@@ -1093,7 +1347,7 @@ const SurveyForm = () => {
                   <option value="">Select a patient</option>
                   {patients.map(patient => (
                     <option key={patient.id} value={patient.id}>
-                      {patient.name} - {patient.injury_type}
+                      {patient.name} - {patient.diagnosis_type || patient.injury_type}
                     </option>
                   ))}
                 </select>
@@ -1170,7 +1424,9 @@ const SurveyForm = () => {
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold text-gray-700 mb-4">Range of Motion</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {selectedPatient.injury_type === 'ACL' ? (
+                    {selectedPatient.diagnosis_type && 
+                      ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(selectedPatient.diagnosis_type) ||
+                      selectedPatient.injury_type === 'ACL' ? (
                       <>
                         <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -1245,7 +1501,9 @@ const SurveyForm = () => {
                   <p className="text-sm text-gray-600 mb-4">Rate the patient's ability to perform these activities (0-7)</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {selectedPatient.injury_type === 'ACL' ? (
+                    {selectedPatient.diagnosis_type && 
+                      ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(selectedPatient.diagnosis_type) ||
+                      selectedPatient.injury_type === 'ACL' ? (
                       <>
                         <div>
                           <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -1396,6 +1654,660 @@ const SurveyForm = () => {
   );
 };
 
+// KOOSForm Component
+const KOOSForm = ({ patient }) => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    patient_id: patient.id,
+    date: new Date().toISOString().split('T')[0],
+    // Symptoms subscale
+    s1_swelling: 0,
+    s2_grinding: 0,
+    s3_catching: 0,
+    s4_straighten: 0,
+    s5_bend: 0,
+    s6_stiffness_morning: 0,
+    s7_stiffness_later: 0,
+    // Pain subscale
+    p1_frequency: 0,
+    p2_twisting: 0,
+    p3_straightening: 0,
+    p4_bending: 0,
+    p5_walking_flat: 0,
+    p6_stairs: 0,
+    p7_night: 0,
+    p8_sitting: 0,
+    p9_standing: 0,
+    // ADL subscale
+    a1_descending_stairs: 0,
+    a2_ascending_stairs: 0,
+    a3_rising_sitting: 0,
+    a4_standing: 0,
+    a5_bending_floor: 0,
+    a6_walking_flat: 0,
+    a7_car: 0,
+    a8_shopping: 0,
+    a9_socks_on: 0,
+    a10_rising_bed: 0,
+    a11_socks_off: 0,
+    a12_lying_bed: 0,
+    a13_bath: 0,
+    a14_sitting: 0,
+    a15_toilet: 0,
+    a16_heavy_duties: 0,
+    a17_light_duties: 0,
+    // Sport/Recreation subscale
+    sp1_squatting: 0,
+    sp2_running: 0,
+    sp3_jumping: 0,
+    sp4_twisting: 0,
+    sp5_kneeling: 0,
+    // Quality of Life subscale
+    q1_awareness: 0,
+    q2_lifestyle: 0,
+    q3_confidence: 0,
+    q4_difficulty: 0
+  });
+
+  const responseLabels = ['None', 'Mild', 'Moderate', 'Severe', 'Extreme'];
+
+  const calculateSubscaleScore = (items) => {
+    const values = items.map(item => formData[item]).filter(val => val !== null);
+    if (values.length === 0) return 0;
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    return Math.round(100 - (mean * 25));
+  };
+
+  const symptomsScore = calculateSubscaleScore(['s1_swelling', 's2_grinding', 's3_catching', 's4_straighten', 's5_bend', 's6_stiffness_morning', 's7_stiffness_later']);
+  const painScore = calculateSubscaleScore(['p1_frequency', 'p2_twisting', 'p3_straightening', 'p4_bending', 'p5_walking_flat', 'p6_stairs', 'p7_night', 'p8_sitting', 'p9_standing']);
+  const adlScore = calculateSubscaleScore(['a1_descending_stairs', 'a2_ascending_stairs', 'a3_rising_sitting', 'a4_standing', 'a5_bending_floor', 'a6_walking_flat', 'a7_car', 'a8_shopping', 'a9_socks_on', 'a10_rising_bed', 'a11_socks_off', 'a12_lying_bed', 'a13_bath', 'a14_sitting', 'a15_toilet', 'a16_heavy_duties', 'a17_light_duties']);
+  const sportScore = calculateSubscaleScore(['sp1_squatting', 'sp2_running', 'sp3_jumping', 'sp4_twisting', 'sp5_kneeling']);
+  const qolScore = calculateSubscaleScore(['q1_awareness', 'q2_lifestyle', 'q3_confidence', 'q4_difficulty']);
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: parseInt(value) }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await axios.post(`${API}/koos`, formData);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(`/patients/${patient.id}`);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to submit KOOS", err);
+      setError(err.response?.data?.detail || "Failed to submit KOOS questionnaire");
+      setLoading(false);
+    }
+  };
+
+  const renderQuestionGroup = (title, questions) => (
+    <div className="mb-8">
+      <h3 className="text-lg font-semibold text-gray-700 mb-4">{title}</h3>
+      <div className="space-y-4">
+        {questions.map(({ field, question }) => (
+          <div key={field} className="bg-gray-50 p-4 rounded">
+            <p className="text-sm font-medium text-gray-700 mb-3">{question}</p>
+            <div className="flex flex-wrap gap-4">
+              {responseLabels.map((label, index) => (
+                <label key={index} className="flex items-center">
+                  <input
+                    type="radio"
+                    name={field}
+                    value={index}
+                    checked={formData[field] === index}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">{index} - {label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (success) {
+    return (
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          KOOS questionnaire submitted successfully! Redirecting to patient dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 container mx-auto px-6 py-8">
+      <div className="mb-6 flex items-center">
+        <button 
+          onClick={() => navigate(`/patients/${patient.id}`)}
+          className="mr-4 text-gray-600 hover:text-gray-900"
+        >
+          ← Back to {patient.name}
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">KOOS Questionnaire</h1>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mb-6">
+          <p className="text-gray-600 mb-4">
+            <strong>Patient:</strong> {patient.name} - {patient.diagnosis_type || patient.injury_type}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-center bg-blue-50 p-4 rounded">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Symptoms</h4>
+              <p className="text-2xl font-bold text-blue-600">{symptomsScore}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Pain</h4>
+              <p className="text-2xl font-bold text-blue-600">{painScore}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Daily Living</h4>
+              <p className="text-2xl font-bold text-blue-600">{adlScore}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Sport</h4>
+              <p className="text-2xl font-bold text-blue-600">{sportScore}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Quality of Life</h4>
+              <p className="text-2xl font-bold text-blue-600">{qolScore}</p>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
+              Assessment Date
+            </label>
+            <input
+              type="date"
+              id="date"
+              value={formData.date}
+              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+
+          {renderQuestionGroup("Symptoms", [
+            { field: 's1_swelling', question: 'Do you have swelling in your knee?' },
+            { field: 's2_grinding', question: 'Do you feel grinding, hear clicking or any other type of noise when your knee moves?' },
+            { field: 's3_catching', question: 'Does your knee catch or hang up when moving?' },
+            { field: 's4_straighten', question: 'Can you straighten your knee fully?' },
+            { field: 's5_bend', question: 'Can you bend your knee fully?' },
+            { field: 's6_stiffness_morning', question: 'How severe is your knee stiffness after first wakening in the morning?' },
+            { field: 's7_stiffness_later', question: 'How severe is your knee stiffness after sitting, lying or resting later in the day?' }
+          ])}
+
+          {renderQuestionGroup("Pain", [
+            { field: 'p1_frequency', question: 'How often do you experience knee pain?' },
+            { field: 'p2_twisting', question: 'Twisting/pivoting on your knee' },
+            { field: 'p3_straightening', question: 'Straightening knee fully' },
+            { field: 'p4_bending', question: 'Bending knee fully' },
+            { field: 'p5_walking_flat', question: 'Walking on flat surface' },
+            { field: 'p6_stairs', question: 'Going up or down stairs' },
+            { field: 'p7_night', question: 'At night while in bed' },
+            { field: 'p8_sitting', question: 'Sitting or lying' },
+            { field: 'p9_standing', question: 'Standing upright' }
+          ])}
+
+          {renderQuestionGroup("Activities of Daily Living", [
+            { field: 'a1_descending_stairs', question: 'Descending stairs' },
+            { field: 'a2_ascending_stairs', question: 'Ascending stairs' },
+            { field: 'a3_rising_sitting', question: 'Rising from sitting' },
+            { field: 'a4_standing', question: 'Standing' },
+            { field: 'a5_bending_floor', question: 'Bending to floor/pick up an object' },
+            { field: 'a6_walking_flat', question: 'Walking on flat surface' },
+            { field: 'a7_car', question: 'Getting in/out of car' },
+            { field: 'a8_shopping', question: 'Going shopping' },
+            { field: 'a9_socks_on', question: 'Putting on socks/stockings' },
+            { field: 'a10_rising_bed', question: 'Rising from bed' },
+            { field: 'a11_socks_off', question: 'Taking off socks/stockings' },
+            { field: 'a12_lying_bed', question: 'Lying in bed (turning over, maintaining knee position)' },
+            { field: 'a13_bath', question: 'Getting in/out of bath' },
+            { field: 'a14_sitting', question: 'Sitting' },
+            { field: 'a15_toilet', question: 'Getting on/off toilet' },
+            { field: 'a16_heavy_duties', question: 'Heavy domestic duties (moving heavy boxes, scrubbing floors, etc)' },
+            { field: 'a17_light_duties', question: 'Light domestic duties (cooking, dusting, etc)' }
+          ])}
+
+          {renderQuestionGroup("Sport and Recreation", [
+            { field: 'sp1_squatting', question: 'Squatting' },
+            { field: 'sp2_running', question: 'Running' },
+            { field: 'sp3_jumping', question: 'Jumping' },
+            { field: 'sp4_twisting', question: 'Twisting/pivoting on your injured knee' },
+            { field: 'sp5_kneeling', question: 'Kneeling' }
+          ])}
+
+          {renderQuestionGroup("Quality of Life", [
+            { field: 'q1_awareness', question: 'How often are you aware of your knee problem?' },
+            { field: 'q2_lifestyle', question: 'Have you modified your life style to avoid potentially damaging activities to your knee?' },
+            { field: 'q3_confidence', question: 'How much are you troubled with lack of confidence in your knee?' },
+            { field: 'q4_difficulty', question: 'In general, how much difficulty do you have with your knee?' }
+          ])}
+
+          <div className="flex items-center justify-end pt-6">
+            <button
+              type="button"
+              onClick={() => navigate(`/patients/${patient.id}`)}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-4"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              {loading ? 'Submitting...' : 'Submit KOOS Questionnaire'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ASESForm Component
+const ASESForm = ({ patient }) => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    patient_id: patient.id,
+    date: new Date().toISOString().split('T')[0],
+    pain_vas: 0,
+    f1_coat: 0,
+    f2_sleep: 0,
+    f3_wash_back: 0,
+    f4_toileting: 0,
+    f5_comb_hair: 0,
+    f6_high_shelf: 0,
+    f7_lift_10lbs: 0,
+    f8_throw_ball: 0,
+    f9_usual_work: 0,
+    f10_usual_sport: 0,
+    has_instability: false,
+    instability_severity: null,
+    usual_work_description: '',
+    usual_sport_description: ''
+  });
+
+  const functionLabels = ['Unable to do', 'Very difficult to do', 'Somewhat difficult to do', 'Not difficult to do'];
+
+  const calculateTotalScore = () => {
+    // Pain component: (10 - pain_vas) * 5 (0-50 points)
+    const painComponent = (10 - formData.pain_vas) * 5;
+    
+    // Function component: sum of function items * 5/3 (0-50 points)
+    const functionItems = [
+      formData.f1_coat, formData.f2_sleep, formData.f3_wash_back, formData.f4_toileting,
+      formData.f5_comb_hair, formData.f6_high_shelf, formData.f7_lift_10lbs,
+      formData.f8_throw_ball, formData.f9_usual_work, formData.f10_usual_sport
+    ];
+    const functionSum = functionItems.reduce((sum, val) => sum + val, 0);
+    const functionComponent = functionSum * (5/3);
+    
+    return {
+      painComponent: Math.round(painComponent * 10) / 10,
+      functionComponent: Math.round(functionComponent * 10) / 10,
+      totalScore: Math.round((painComponent + functionComponent) * 10) / 10
+    };
+  };
+
+  const scores = calculateTotalScore();
+
+  const handleChange = (field, value) => {
+    if (field === 'pain_vas') {
+      setFormData(prev => ({ ...prev, [field]: parseFloat(value) }));
+    } else if (field === 'has_instability') {
+      setFormData(prev => ({ 
+        ...prev, 
+        [field]: value === 'true',
+        instability_severity: value === 'false' ? null : prev.instability_severity
+      }));
+    } else if (field === 'instability_severity') {
+      setFormData(prev => ({ ...prev, [field]: parseFloat(value) }));
+    } else if (field.startsWith('f')) {
+      setFormData(prev => ({ ...prev, [field]: parseInt(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await axios.post(`${API}/ases`, formData);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(`/patients/${patient.id}`);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to submit ASES", err);
+      setError(err.response?.data?.detail || "Failed to submit ASES questionnaire");
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          ASES questionnaire submitted successfully! Redirecting to patient dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 container mx-auto px-6 py-8">
+      <div className="mb-6 flex items-center">
+        <button 
+          onClick={() => navigate(`/patients/${patient.id}`)}
+          className="mr-4 text-gray-600 hover:text-gray-900"
+        >
+          ← Back to {patient.name}
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">ASES Questionnaire</h1>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mb-6">
+          <p className="text-gray-600 mb-4">
+            <strong>Patient:</strong> {patient.name} - {patient.diagnosis_type || patient.injury_type}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center bg-green-50 p-4 rounded">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Pain Component</h4>
+              <p className="text-2xl font-bold text-green-600">{scores.painComponent}/50</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Function Component</h4>
+              <p className="text-2xl font-bold text-green-600">{scores.functionComponent}/50</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Total ASES Score</h4>
+              <p className="text-3xl font-bold text-green-600">{scores.totalScore}/100</p>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
+              Assessment Date
+            </label>
+            <input
+              type="date"
+              id="date"
+              value={formData.date}
+              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Pain Assessment</h3>
+            <div className="bg-gray-50 p-4 rounded">
+              <p className="text-sm font-medium text-gray-700 mb-3">How would you rate your pain today on a scale of 0-10?</p>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">0 (No pain)</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.5"
+                  value={formData.pain_vas}
+                  onChange={(e) => handleChange('pain_vas', e.target.value)}
+                  className="flex-1"
+                />
+                <span className="text-sm text-gray-600">10 (Worst pain)</span>
+              </div>
+              <div className="text-center mt-2">
+                <span className="text-2xl font-bold text-red-600">{formData.pain_vas}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Functional Assessment</h3>
+            <p className="text-sm text-gray-600 mb-4">Rate your ability to perform the following activities:</p>
+            
+            <div className="space-y-4">
+              {[
+                { field: 'f1_coat', question: 'Put on a coat' },
+                { field: 'f2_sleep', question: 'Sleep on your painful or affected side' },
+                { field: 'f3_wash_back', question: 'Wash your back or do up bra in back' },
+                { field: 'f4_toileting', question: 'Manage toileting' },
+                { field: 'f5_comb_hair', question: 'Comb your hair' },
+                { field: 'f6_high_shelf', question: 'Reach a high shelf' },
+                { field: 'f7_lift_10lbs', question: 'Lift 10 pounds above shoulder level' },
+                { field: 'f8_throw_ball', question: 'Throw a ball overhand' },
+                { field: 'f9_usual_work', question: 'Do usual work' },
+                { field: 'f10_usual_sport', question: 'Do usual sport' }
+              ].map(({ field, question }) => (
+                <div key={field} className="bg-gray-50 p-4 rounded">
+                  <p className="text-sm font-medium text-gray-700 mb-3">{question}</p>
+                  <div className="flex flex-wrap gap-4">
+                    {functionLabels.map((label, index) => (
+                      <label key={index} className="flex items-center">
+                        <input
+                          type="radio"
+                          name={field}
+                          value={index}
+                          checked={formData[field] === index}
+                          onChange={(e) => handleChange(field, e.target.value)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">{index} - {label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Additional Information</h3>
+            
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">Do you have instability (feeling of shoulder coming out of joint)?</p>
+              <div className="flex space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="has_instability"
+                    value="true"
+                    checked={formData.has_instability === true}
+                    onChange={(e) => handleChange('has_instability', e.target.value)}
+                    className="mr-2"
+                  />
+                  Yes
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="has_instability"
+                    value="false"
+                    checked={formData.has_instability === false}
+                    onChange={(e) => handleChange('has_instability', e.target.value)}
+                    className="mr-2"
+                  />
+                  No
+                </label>
+              </div>
+            </div>
+
+            {formData.has_instability && (
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">If yes, rate your instability (0-10):</p>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600">0 (No instability)</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={formData.instability_severity || 0}
+                    onChange={(e) => handleChange('instability_severity', e.target.value)}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-gray-600">10 (Severe instability)</span>
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-xl font-bold text-blue-600">{formData.instability_severity || 0}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Describe your usual work (optional)
+                </label>
+                <textarea
+                  value={formData.usual_work_description}
+                  onChange={(e) => handleChange('usual_work_description', e.target.value)}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  rows="3"
+                  placeholder="e.g., office work, manual labor, etc."
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Describe your usual sport (optional)
+                </label>
+                <textarea
+                  value={formData.usual_sport_description}
+                  onChange={(e) => handleChange('usual_sport_description', e.target.value)}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  rows="3"
+                  placeholder="e.g., tennis, swimming, basketball, etc."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end pt-6">
+            <button
+              type="button"
+              onClick={() => navigate(`/patients/${patient.id}`)}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-4"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              {loading ? 'Submitting...' : 'Submit ASES Questionnaire'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ProAssessmentRouter Component
+const ProAssessmentRouter = () => {
+  const { patientId } = useParams();
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPatient = async () => {
+      try {
+        const response = await axios.get(`${API}/patients/${patientId}`);
+        setPatient(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch patient", err);
+        setError("Failed to load patient");
+        setLoading(false);
+      }
+    };
+
+    if (patientId) {
+      fetchPatient();
+    }
+  }, [patientId]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="flex justify-center">
+          <div className="loader"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          Patient not found
+        </div>
+      </div>
+    );
+  }
+
+  // Determine body part from diagnosis
+  const isKneePatient = patient.diagnosis_type && 
+    ['ACL Tear', 'Meniscus Tear', 'Cartilage Defect', 'Knee Osteoarthritis', 'Post Total Knee Replacement'].includes(patient.diagnosis_type) ||
+    patient.injury_type === 'ACL';
+
+  if (isKneePatient) {
+    return <KOOSForm patient={patient} />;
+  } else {
+    return <ASESForm patient={patient} />;
+  }
+};
+
 // Wearable Data Form Component
 const WearableDataForm = () => {
   const [patients, setPatients] = useState([]);
@@ -1508,7 +2420,7 @@ const WearableDataForm = () => {
                   <option value="">Select a patient</option>
                   {patients.map(patient => (
                     <option key={patient.id} value={patient.id}>
-                      {patient.name} - {patient.injury_type}
+                      {patient.name} - {patient.diagnosis_type || patient.injury_type}
                     </option>
                   ))}
                 </select>
@@ -1671,6 +2583,7 @@ function App() {
           <Route path="/patients/:patientId" element={<PatientDetail />} />
           <Route path="/surveys/new" element={<SurveyForm />} />
           <Route path="/wearable/new" element={<WearableDataForm />} />
+          <Route path="/pro-assessment/:patientId" element={<ProAssessmentRouter />} />
         </Routes>
         <Footer />
       </BrowserRouter>
